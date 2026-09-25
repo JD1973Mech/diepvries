@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mijn Diepvries</title>
+<style>
+:root{
+  --mint:#9dc4b2; --mint-mid:#7fae9a; --mint-dark:#5c8975; --mint-shadow:#4a705f;
+  --cream:#f3ede2; --paper:#fffdf8; --line:#ddd3bf;
+  --chrome-l:#f4f6f8; --chrome:#c9cfd6; --chrome-d:#8b929c;
+  --ink:#2e2a24; --accent:#e0763f; --floor:#cabf9e;
+  --green:#4caf82; --orange:#e0973f; --red:#e05c3f; --expired:#b23a2f;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; font-family:Georgia,ui-serif,serif; background:radial-gradient(ellipse at 50% 0%,#faf6ec,var(--cream) 70%);
+  color:var(--ink); min-height:100%; display:flex; flex-direction:column; align-items:center; padding:20px 12px 50px;
+}
+h1{font-size:1.3rem; margin:2px 0 2px;}
+.sub{color:#8a8071; font-size:.8rem; margin-bottom:16px; text-align:center;}
+
+.main{ width:100%; max-width:980px; display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
+
+/* ---------- FREEZER (always visible, left) ---------- */
+.scene{ perspective:1400px; perspective-origin:50% 65%; width:230px; flex-shrink:0; position:sticky; top:14px; }
+.stage{ position:relative; width:100%; aspect-ratio:3/4; filter:drop-shadow(0 20px 18px rgba(0,0,0,.22)); }
+.floor-shadow{ position:absolute; left:8%; right:8%; bottom:-12px; height:14px; background:radial-gradient(ellipse,rgba(0,0,0,.28),transparent 75%); border-radius:50%; }
+.freezer{
+  position:relative; width:100%; height:100%; border-radius:18px;
+  background:linear-gradient(115deg,rgba(255,255,255,.35) 0%, transparent 18%), linear-gradient(180deg,var(--mint) 0%, var(--mint-mid) 55%, var(--mint-dark) 100%);
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.3), inset 0 -10px 22px rgba(0,0,0,.18), inset 0 10px 14px rgba(255,255,255,.25);
+  overflow:hidden;
+}
+.top-vent{ position:absolute; top:7px; left:50%; transform:translateX(-50%); width:46%; height:5px; border-radius:3px; background:repeating-linear-gradient(90deg,var(--mint-shadow) 0 3px, transparent 3px 7px); opacity:.5; }
+.feet{ position:absolute; bottom:-6px; width:100%; display:flex; justify-content:space-between; padding:0 16px; }
+.feet span{ width:12px; height:9px; border-radius:0 0 5px 5px; background:linear-gradient(180deg,var(--chrome),var(--chrome-d)); }
+.interior{
+  position:absolute; inset:8px; border-radius:11px;
+  background:repeating-linear-gradient(180deg, rgba(0,0,0,.05) 0 2px, transparent 2px 24px), linear-gradient(180deg,#e4efe9,#cfe0d6 60%, #c2d6ca);
+  box-shadow:inset 0 10px 22px rgba(0,0,0,.32), inset 0 -4px 8px rgba(0,0,0,.15);
+  display:flex; flex-direction:column; gap:7px; padding:8px;
+}
+.door{
+  position:absolute; inset:0; border-radius:18px;
+  background:linear-gradient(120deg,rgba(255,255,255,.4) 0%, rgba(255,255,255,0) 22%), linear-gradient(200deg,var(--mint) 0%, var(--mint-mid) 55%, var(--mint-dark) 100%);
+  transform-origin:left center; transform:rotateY(0deg);
+  transition:transform .85s cubic-bezier(.62,-0.15,.3,1.2), box-shadow .4s;
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.3), inset 0 8px 14px rgba(255,255,255,.3), inset 0 -14px 20px rgba(0,0,0,.15), 2px 0 8px rgba(0,0,0,.12);
+  cursor:pointer; z-index:5;
+}
+.freezer.open .door{ transform:rotateY(-115deg); box-shadow:10px 4px 26px rgba(0,0,0,.4); }
+.plate{ position:absolute; top:13px; left:50%; transform:translateX(-50%); font-size:.6rem; letter-spacing:2px; color:rgba(255,255,255,.9); font-weight:bold; background:rgba(255,255,255,.12); padding:2px 8px; border-radius:4px; border:1px solid rgba(255,255,255,.25); }
+.handle{ position:absolute; right:11px; top:50%; transform:translateY(-50%); width:11px; height:48%; border-radius:7px; background:linear-gradient(90deg,var(--chrome-d),var(--chrome-l) 45%,var(--chrome) 55%,var(--chrome-d)); box-shadow:1px 1px 4px rgba(0,0,0,.45), inset 0 0 2px rgba(255,255,255,.6); }
+.hint{ position:absolute; bottom:8px; left:50%; transform:translateX(-50%); font-size:.6rem; color:rgba(255,255,255,.85); background:rgba(0,0,0,.18); padding:2px 8px; border-radius:9px; white-space:nowrap; }
+
+.drawer{
+  flex:1; position:relative; border-radius:7px; cursor:pointer;
+  background:linear-gradient(180deg,#fffefb,#efe8d9);
+  box-shadow:0 2px 3px rgba(0,0,0,.15), inset 0 0 0 1px var(--line), inset 0 3px 0 rgba(255,255,255,.7), inset 0 -3px 5px rgba(0,0,0,.08);
+  transition:transform .55s cubic-bezier(.22,.9,.32,1.15), box-shadow .5s, filter .5s;
+  display:flex; flex-direction:column; align-items:stretch; justify-content:center; padding:3px 9px;
+}
+.drawer::before{ content:""; position:absolute; top:3px; left:14%; right:14%; height:3px; border-radius:2px; background:rgba(0,0,0,.12); box-shadow:0 1px 0 rgba(255,255,255,.5); }
+.drawer-top{ display:flex; align-items:center; justify-content:space-between; }
+.drawer-label{font-size:.68rem; font-weight:bold; color:#6d6353;}
+.drawer-right{display:flex; align-items:center; gap:6px;}
+.drawer-count{ font-size:.58rem; background:var(--accent); color:#fff; border-radius:8px; padding:1px 6px; }
+.drawer-knob{ width:26px; height:6px; border-radius:3px; background:linear-gradient(90deg,var(--chrome-d),var(--chrome-l) 45%,#fff 50%,var(--chrome-l) 55%,var(--chrome-d)); box-shadow:0 1px 2px rgba(0,0,0,.35); }
+.drawer-dots{ font-size:.56rem; margin-top:2px; color:#5a5346; letter-spacing:.5px; }
+.drawer.selected{ transform:translateZ(60px) scale(1.08); box-shadow:0 28px 22px -8px rgba(0,0,0,.4), inset 0 0 0 1px var(--accent), inset 0 3px 0 rgba(255,255,255,.7); z-index:6; }
+.interior.has-selection .drawer:not(.selected){ transform:translateZ(-12px) scale(.96); filter:brightness(.9) saturate(.9); }
+
+/* ---------- RIGHT PANEL ---------- */
+.right{ flex:1 1 420px; min-width:300px; }
+.subtabs{ display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.subtab-btn{ padding:7px 14px; border-radius:18px; border:1px solid var(--line); background:#fff; color:#8a7c65; font-size:.75rem; font-family:inherit; cursor:pointer; }
+.subtab-btn.active{ background:linear-gradient(180deg,var(--mint-mid),var(--mint-dark)); color:#fff; border-color:var(--mint-dark); }
+.panelbox{ background:var(--paper); border-radius:16px; padding:16px; box-shadow:0 8px 18px rgba(0,0,0,.1), inset 0 0 0 1px var(--line); }
+.panel-title{ font-size:.92rem; font-weight:bold; color:var(--mint-shadow); margin-bottom:2px; }
+.panel-sub{ font-size:.7rem; color:#a89e8c; margin-bottom:12px; }
+.panel-placeholder{ color:#a89e8c; font-size:.8rem; text-align:center; padding:34px 10px; line-height:1.6; }
+
+/* ---------- DASHBOARD ---------- */
+.stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+.stat-card{ border-radius:12px; padding:10px 6px; text-align:center; color:#fff; }
+.stat-card .num{ font-size:1.3rem; font-weight:bold; display:block; }
+.stat-card .lbl{ font-size:.6rem; opacity:.95; }
+.stat-green{ background:linear-gradient(180deg,#63c298,var(--green)); }
+.stat-orange{ background:linear-gradient(180deg,#f0ac5e,var(--orange)); }
+.stat-red{ background:linear-gradient(180deg,#ea8064,var(--red)); }
+.stat-expired{ background:linear-gradient(180deg,#c9564a,var(--expired)); }
+.urgent-title{ font-size:.78rem; font-weight:bold; color:#8a7c65; margin:10px 0 6px; }
+
+/* ---------- ITEM CARDS (shared) ---------- */
+.items{ display:flex; flex-direction:column; gap:8px; }
+.item{ background:var(--cream); border-radius:10px; padding:9px 10px; border:1px solid var(--line); }
+.item.thawed{ opacity:.55; filter:grayscale(.4); }
+.item-row1{ display:flex; justify-content:space-between; align-items:flex-start; gap:6px; }
+.item-main{ display:flex; align-items:center; gap:8px; overflow:hidden; }
+.item-emoji{ font-size:1.25rem; }
+.item-name{ font-weight:bold; font-size:.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.item-badge{ font-size:.6rem; padding:1px 7px; border-radius:8px; color:#fff; white-space:nowrap; }
+.b-green{background:var(--green);} .b-orange{background:var(--orange);} .b-red{background:var(--red);} .b-expired{background:var(--expired);} .b-thawed{background:#9a9284;}
+.item-meta{ font-size:.65rem; color:#8a8071; margin-top:2px; }
+.item-notes{ font-size:.65rem; color:#a08f6f; margin-top:2px; font-style:italic; }
+.item-drawer-tag{ font-size:.58rem; background:var(--mint-dark); color:#fff; border-radius:7px; padding:1px 7px; white-space:nowrap; }
+.item-row2{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.stock{ display:flex; align-items:center; gap:6px; font-size:.68rem; color:#6d6353; }
+.mini-step{ display:flex; align-items:center; gap:4px; background:#fff; border:1px solid var(--line); border-radius:14px; padding:2px 4px; }
+.mini-step button{ width:18px; height:18px; border-radius:50%; border:none; background:var(--mint-dark); color:#fff; font-size:.75rem; line-height:1; cursor:pointer; }
+.mini-step span{ min-width:16px; text-align:center; font-size:.72rem; font-weight:bold; }
+.move-select{ font-family:inherit; font-size:.66rem; padding:3px 5px; border-radius:6px; border:1px solid var(--line); background:#fff; }
+.del-btn{ border:none; background:none; color:#b0a695; font-size:.95rem; cursor:pointer; padding:2px 5px; }
+.del-btn:hover{ color:#c0392b; }
+.empty-msg{ color:#a89e8c; text-align:center; padding:14px 0; font-size:.78rem; }
+
+/* ---------- FORM ---------- */
+.add-form{ display:grid; grid-template-columns:1fr 1fr; gap:8px; background:#fbf8f1; border:1px dashed var(--line); border-radius:10px; padding:12px; margin-top:12px; }
+.add-form label{ font-size:.64rem; color:#8a8071; display:block; margin-bottom:3px; }
+.add-form input[type=text], .add-form input[type=date], .add-form select, .add-form textarea{
+  font-family:inherit; font-size:.78rem; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:#fff; width:100%; resize:vertical;
+}
+.add-form .full{ grid-column:1/3; }
+.stepper{ display:flex; align-items:center; gap:8px; background:#fff; border:1px solid var(--line); border-radius:20px; padding:3px 6px; width:fit-content; }
+.stepper .step-btn{ width:24px; height:24px; border-radius:50%; border:none; background:var(--mint-dark); color:#fff; font-size:1rem; cursor:pointer; line-height:1; }
+.stepper .step-value{ min-width:26px; text-align:center; font-weight:bold; font-size:.85rem; }
+.add-btn{ grid-column:1/3; margin-top:2px; background:linear-gradient(180deg,var(--mint-mid),var(--mint-dark)); color:#fff; border:none; border-radius:8px; padding:9px; font-size:.8rem; font-weight:bold; cursor:pointer; box-shadow:0 3px 6px rgba(0,0,0,.15); }
+
+/* ---------- LIST TAB ---------- */
+.sort-controls{ display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:.75rem; color:#8a8071; flex-wrap:wrap; }
+.sort-controls select{ font-family:inherit; font-size:.78rem; padding:5px 9px; border-radius:8px; border:1px solid var(--line); background:#fff; }
+.export-btn{ font-family:inherit; font-size:.7rem; padding:5px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; color:#6d8b7a; cursor:pointer; }
+
+.legend{ max-width:980px; width:100%; margin-top:16px; font-size:.7rem; color:#8a8071; text-align:center; }
+.reset-btn{ margin-top:12px; background:none; border:1px solid var(--line); color:#8a7c65; border-radius:8px; padding:6px 14px; font-size:.7rem; cursor:pointer; }
+
+@media (max-width:760px){
+  .main{ flex-direction:column; align-items:center; }
+  .scene{ width:min(230px,60vw); position:relative; top:0; margin:0 auto; }
+  .right{ width:100%; }
+}
+</style>
+</head>
+<body>
+
+<h1>❄️ Mijn Diepvries</h1>
+<div class="sub">Tik op de deur om te openen · tik op een lade om die te bekijken</div>
+
+<div class="main">
+  <div class="scene">
+    <div class="stage">
+      <div class="floor-shadow"></div>
+      <div class="freezer" id="freezer">
+        <div class="interior" id="interior"></div>
+        <div class="door" id="door">
+          <div class="top-vent"></div>
+          <div class="plate">SMEG-STYLE</div>
+          <div class="handle"></div>
+          <div class="hint">tik om te openen</div>
+        </div>
+        <div class="feet"><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="subtabs">
+      <button class="subtab-btn active" data-tab="dashboard">📊 Overzicht</button>
+      <button class="subtab-btn" data-tab="list">📋 Volledige lijst</button>
+      <button class="subtab-btn" data-tab="drawer">🧊 Per lade</button>
+    </div>
+
+    <div class="panelbox" id="view-dashboard"></div>
+
+    <div class="panelbox" id="view-list" style="display:none;">
+      <div class="sort-controls">
+        <label for="sortSelect">Sorteer op:</label>
+        <select id="sortSelect">
+          <option value="expiry">Houdbaarheid (bijna op eerst)</option>
+          <option value="type">Type product</option>
+          <option value="name">Naam</option>
+          <option value="drawer">Lade</option>
+        </select>
+        <button class="export-btn" id="exportBtn">⬇ Exporteer CSV</button>
+        <button class="export-btn" id="importBtn">⬆ Importeer CSV</button>
+        <input type="file" id="importFile" accept=".csv,text/csv" style="display:none;">
+      </div>
+      <div class="items" id="overviewList"></div>
+    </div>
+
+    <div class="panelbox" id="view-drawer"></div>
+  </div>
+</div>
+
+<div class="legend">Alles wordt lokaal in je browser opgeslagen (localStorage) — klaar om later te koppelen aan een database.</div>
+<button class="reset-btn" id="resetBtn">Alles wissen</button>
+
+<script>
+/* ===================== REFERENCE DATA (klaar voor latere database) ===================== */
+const TYPES = ["Groenten","Fruit","Vlees","Vis","Brood","Kant-en-klaar","IJs","Soep","Kruiden","Overig"];
+
+const DEFAULT_SHELF_LIFE_TABLE = [
+  {type:"Groenten", bereiding:"Rauw", maanden:3, emoji:"🥦"},
+  {type:"Groenten", bereiding:"Geblancheerd", maanden:10, emoji:"🥦"},
+  {type:"Groenten", bereiding:"Gekookt", maanden:8, emoji:"🥦"},
+  {type:"Fruit", bereiding:"Rauw", maanden:8, emoji:"🍓"},
+  {type:"Fruit", bereiding:"Gestoofd", maanden:10, emoji:"🍓"},
+  {type:"Vlees", bereiding:"Rauw", maanden:6, emoji:"🥩"},
+  {type:"Vlees", bereiding:"Gekookt/gebraden", maanden:3, emoji:"🥩"},
+  {type:"Vis", bereiding:"Rauw", maanden:3, emoji:"🐟"},
+  {type:"Vis", bereiding:"Gekookt/gebakken", maanden:2, emoji:"🐟"},
+  {type:"Brood", bereiding:"Vers/onbereid", maanden:3, emoji:"🍞"},
+  {type:"Brood", bereiding:"Belegd/gebakken", maanden:2, emoji:"🍞"},
+  {type:"Kant-en-klaar", bereiding:"Bereid gerecht", maanden:3, emoji:"🍱"},
+  {type:"IJs", bereiding:"Kant-en-klaar", maanden:2, emoji:"🍨"},
+  {type:"Soep", bereiding:"Gekookt", maanden:3, emoji:"🥣"},
+  {type:"Kruiden", bereiding:"Rauw/hele takjes", maanden:8, emoji:"🌿"},
+  {type:"Kruiden", bereiding:"Gehakt/in blokjes", maanden:10, emoji:"🌿"},
+  {type:"Overig", bereiding:"Anders", maanden:6, emoji:"📦"}
+];
+// Losse tabel in eigen opslag-sleutel: later 1-op-1 te vervangen door een databasetabel of CSV-import.
+const SHELF_TABLE_KEY = "diepvries_shelflife_table_v1";
+let SHELF_LIFE_TABLE = loadJSON(SHELF_TABLE_KEY, DEFAULT_SHELF_LIFE_TABLE);
+
+function getBereidingOptions(type){ return SHELF_LIFE_TABLE.filter(r=>r.type===type); }
+function getShelfLifeEntry(type,bereiding){ return SHELF_LIFE_TABLE.find(r=>r.type===type && r.bereiding===bereiding); }
+function getEmoji(type,bereiding){
+  const entry = getShelfLifeEntry(type,bereiding) || SHELF_LIFE_TABLE.find(r=>r.type===type);
+  return entry ? entry.emoji : "📦";
+}
+
+/* ===================== PRODUCT OPSLAG ===================== */
+const STORAGE_KEY = "diepvries_data_v2";
+let data = loadJSON(STORAGE_KEY, null) || { drawers: defaultDrawers() };
+let openDrawerIndex = null;
+let activeTab = 'dashboard';
+
+function defaultDrawers(){
+  return [ {name:"Lade 1", items:[]}, {name:"Lade 2", items:[]}, {name:"Lade 3", items:[]}, {name:"Lade 4", items:[]} ];
+}
+function loadJSON(key, fallback){
+  try{ const raw = localStorage.getItem(key); if(raw) return JSON.parse(raw); }catch(e){ console.error(e); }
+  return fallback;
+}
+function saveJSON(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){ console.error(e); } }
+function save(){ saveJSON(STORAGE_KEY, data); }
+
+function daysBetween(dateStr){
+  const d = new Date(dateStr); const now = new Date();
+  d.setHours(0,0,0,0); now.setHours(0,0,0,0);
+  return Math.round((now-d)/86400000);
+}
+function escapeHtml(str){ const d=document.createElement('div'); d.textContent = str ?? ''; return d.innerHTML; }
+function remainingDays(item){
+  const age = daysBetween(item.frozenDate);
+  return item.shelfLifeMonths ? (item.shelfLifeMonths*30 - age) : Infinity;
+}
+function statusInfo(remaining){
+  if(remaining===Infinity) return {cls:'green', badge:'b-green', label:'Goed'};
+  if(remaining<0) return {cls:'expired', badge:'b-expired', label:'Verlopen ⚠️'};
+  if(remaining<=15) return {cls:'red', badge:'b-red', label:'Bijna op'};
+  if(remaining<=30) return {cls:'orange', badge:'b-orange', label:'Let op'};
+  return {cls:'green', badge:'b-green', label:'Goed'};
+}
+function allItemsFlat(){
+  let all = [];
+  data.drawers.forEach((drawer,dIdx)=> drawer.items.forEach((item,iIdx)=>{
+    all.push({item, drawerIdx:dIdx, itemIdx:iIdx, drawerName:drawer.name, remaining:remainingDays(item)});
+  }));
+  return all;
+}
+
+/* ===================== DOM refs ===================== */
+const freezer = document.getElementById('freezer');
+const door = document.getElementById('door');
+const interior = document.getElementById('interior');
+
+door.addEventListener('click', ()=>{
+  freezer.classList.toggle('open');
+  if(!freezer.classList.contains('open')) openDrawerIndex = null;
+  renderAll();
+});
+
+/* ===================== TABS ===================== */
+document.querySelectorAll('.subtab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> switchTab(btn.dataset.tab));
+});
+function switchTab(tab){
+  activeTab = tab;
+  document.querySelectorAll('.subtab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
+  document.getElementById('view-dashboard').style.display = tab==='dashboard' ? '' : 'none';
+  document.getElementById('view-list').style.display = tab==='list' ? '' : 'none';
+  document.getElementById('view-drawer').style.display = tab==='drawer' ? '' : 'none';
+  renderAll();
+}
+
+/* ===================== RENDER: FREEZER + DRAWERS ===================== */
+function renderDrawers(){
+  interior.innerHTML = '';
+  interior.classList.toggle('has-selection', openDrawerIndex!==null);
+  data.drawers.forEach((drawer, idx)=>{
+    const counts = {green:0,orange:0,red:0,expired:0};
+    drawer.items.forEach(it=>{ counts[statusInfo(remainingDays(it)).cls]++; });
+    const dots = [
+      counts.green?`🟢${counts.green}`:'', counts.orange?`🟠${counts.orange}`:'',
+      counts.red?`🔴${counts.red}`:'', counts.expired?`⚠️${counts.expired}`:''
+    ].filter(Boolean).join(' ');
+    const div = document.createElement('div');
+    div.className = 'drawer' + (openDrawerIndex===idx ? ' selected':'');
+    div.innerHTML = `
+      <div class="drawer-top">
+        <span class="drawer-label">${escapeHtml(drawer.name)}</span>
+        <div class="drawer-right"><span class="drawer-count">${drawer.items.length}</span><span class="drawer-knob"></span></div>
+      </div>
+      <div class="drawer-dots">${dots}</div>`;
+    div.addEventListener('click', ()=>{ openDrawerIndex = idx; switchTab('drawer'); });
+    interior.appendChild(div);
+  });
+}
+
+/* ===================== ITEM CARD (gedeeld door lijst & lade-weergave) ===================== */
+function itemCardHTML({item, drawerIdx, itemIdx, drawerName}, showDrawerTag){
+  const rem = remainingDays(item);
+  const st = statusInfo(rem);
+  const thawed = item.aantal <= 0;
+  const emoji = getEmoji(item.type, item.bereiding);
+  const age = daysBetween(item.frozenDate);
+  const uid = `${drawerIdx}-${itemIdx}`;
+  return `
+    <div class="item ${thawed?'thawed':''}" data-uid="${uid}">
+      <div class="item-row1">
+        <div class="item-main">
+          <span class="item-emoji">${emoji}</span>
+          <div>
+            <div class="item-name">${escapeHtml(item.name)}</div>
+            <div class="item-meta">${item.type}${item.bereiding?(' · '+item.bereiding):''} · ${age}d ingevroren · houdbaar ${item.shelfLifeMonths||'?'} mnd · ${escapeHtml(item.packaging)||'-'} · ${item.servings||'?'} pers.</div>
+            ${item.notes ? `<div class="item-notes">📝 ${escapeHtml(item.notes)}</div>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <span class="item-badge ${thawed?'b-thawed':st.badge}">${thawed?'Ontdooid':st.label}</span>
+          ${showDrawerTag ? `<span class="item-drawer-tag">${escapeHtml(drawerName)}</span>` : ''}
+        </div>
+      </div>
+      <div class="item-row2">
+        <div class="stock">
+          Voorraad:
+          <div class="mini-step">
+            <button type="button" class="stock-minus" data-uid="${uid}">−</button>
+            <span>${item.aantal}</span>
+            <button type="button" class="stock-plus" data-uid="${uid}">+</button>
+          </div>
+        </div>
+        <select class="move-select" data-uid="${uid}">
+          ${data.drawers.map((d,i)=>`<option value="${i}" ${i===drawerIdx?'selected':''}>${escapeHtml(d.name)}</option>`).join('')}
+        </select>
+        <button class="del-btn" data-uid="${uid}" title="Verwijderen">✕</button>
+      </div>
+    </div>`;
+}
+
+function wireItemCards(container){
+  container.querySelectorAll('.stock-plus').forEach(b=> b.addEventListener('click', ()=> changeStock(b.dataset.uid, 1)));
+  container.querySelectorAll('.stock-minus').forEach(b=> b.addEventListener('click', ()=> changeStock(b.dataset.uid, -1)));
+  container.querySelectorAll('.del-btn').forEach(b=> b.addEventListener('click', ()=> deleteItem(b.dataset.uid)));
+  container.querySelectorAll('.move-select').forEach(sel=> sel.addEventListener('change', ()=> moveItem(sel.dataset.uid, parseInt(sel.value))));
+}
+function parseUid(uid){ const [d,i] = uid.split('-').map(Number); return {d,i}; }
+function changeStock(uid, delta){
+  const {d,i} = parseUid(uid);
+  const item = data.drawers[d].items[i];
+  item.aantal = Math.max(0, (item.aantal||0)+delta);
+  save(); renderAll();
+}
+function deleteItem(uid){
+  const {d,i} = parseUid(uid);
+  data.drawers[d].items.splice(i,1);
+  save(); renderAll();
+}
+function moveItem(uid, targetDrawerIdx){
+  const {d,i} = parseUid(uid);
+  if(targetDrawerIdx===d) return;
+  const [item] = data.drawers[d].items.splice(i,1);
+  data.drawers[targetDrawerIdx].items.push(item);
+  save(); renderAll();
+}
+
+/* ===================== DASHBOARD ===================== */
+function renderDashboard(){
+  const box = document.getElementById('view-dashboard');
+  const all = allItemsFlat();
+  const counts = {green:0,orange:0,red:0,expired:0};
+  all.forEach(a=> counts[statusInfo(a.remaining).cls]++);
+  const urgent = all.filter(a=> statusInfo(a.remaining).cls==='red' || statusInfo(a.remaining).cls==='expired')
+                     .sort((a,b)=>a.remaining-b.remaining);
+  box.innerHTML = `
+    <div class="panel-title">📊 Vervaloverzicht</div>
+    <div class="panel-sub">${all.length} product(en) in de diepvries</div>
+    <div class="stat-grid">
+      <div class="stat-card stat-green"><span class="num">${counts.green}</span><span class="lbl">🟢 > 1 mnd</span></div>
+      <div class="stat-card stat-orange"><span class="num">${counts.orange}</span><span class="lbl">🟠 < 1 mnd</span></div>
+      <div class="stat-card stat-red"><span class="num">${counts.red}</span><span class="lbl">🔴 < 0,5 mnd</span></div>
+      <div class="stat-card stat-expired"><span class="num">${counts.expired}</span><span class="lbl">⚠️ verlopen</span></div>
+    </div>
+    ${urgent.length ? `<div class="urgent-title">Eerst opeten / weggooien:</div><div class="items" id="urgentList"></div>` : `<div class="empty-msg">Niets dat dringend aandacht nodig heeft 🎉</div>`}
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+      <button class="export-btn" id="exportGuideBtn">⬇ Richtlijnentabel (CSV)</button>
+      <button class="export-btn" id="importGuideBtn">⬆ Importeer richtlijnen</button>
+      <input type="file" id="importGuideFile" accept=".csv,text/csv" style="display:none;">
+    </div>
+  `;
+  if(urgent.length){
+    const ul = document.getElementById('urgentList');
+    ul.innerHTML = urgent.map(a=> itemCardHTML(a, true)).join('');
+    wireItemCards(ul);
+  }
+  document.getElementById('exportGuideBtn').addEventListener('click', exportShelfLifeTableCSV);
+  document.getElementById('importGuideBtn').addEventListener('click', ()=> document.getElementById('importGuideFile').click());
+  document.getElementById('importGuideFile').addEventListener('change', (e)=>{
+    if(e.target.files[0]) importShelfLifeCSV(e.target.files[0]);
+    e.target.value = '';
+  });
+}
+
+/* ===================== VOLLEDIGE LIJST ===================== */
+function renderList(){
+  const list = document.getElementById('overviewList');
+  const sortBy = document.getElementById('sortSelect').value;
+  let all = allItemsFlat();
+  if(all.length===0){ list.innerHTML = `<div class="empty-msg">Er zijn nog geen producten ingevoerd.</div>`; return; }
+  all.sort((a,b)=>{
+    if(sortBy==='expiry') return a.remaining-b.remaining;
+    if(sortBy==='type') return a.item.type.localeCompare(b.item.type) || a.item.name.localeCompare(b.item.name);
+    if(sortBy==='name') return a.item.name.localeCompare(b.item.name);
+    if(sortBy==='drawer') return a.drawerName.localeCompare(b.drawerName) || a.item.name.localeCompare(b.item.name);
+    return 0;
+  });
+  list.innerHTML = all.map(a=> itemCardHTML(a, true)).join('');
+  wireItemCards(list);
+}
+document.getElementById('sortSelect').addEventListener('change', renderList);
+document.getElementById('exportBtn').addEventListener('click', exportProductsCSV);
+
+/* ===================== PER LADE (weergave + formulier) ===================== */
+function renderDrawerView(){
+  const box = document.getElementById('view-drawer');
+  if(!freezer.classList.contains('open') || openDrawerIndex===null){
+    box.innerHTML = `<div class="panel-placeholder">Open de diepvries en tik op een lade<br>om producten te bekijken of toe te voegen.</div>`;
+    return;
+  }
+  const idx = openDrawerIndex;
+  const drawer = data.drawers[idx];
+  const rows = drawer.items.map((item,i)=> ({item, drawerIdx:idx, itemIdx:i, drawerName:drawer.name}));
+  box.innerHTML = `
+    <div class="panel-title">🧊 ${escapeHtml(drawer.name)}</div>
+    <div class="panel-sub">${drawer.items.length} product(en)</div>
+    <div class="items" id="drawerItems">${rows.length ? rows.map(r=>itemCardHTML(r,false)).join('') : '<div class="empty-msg">Nog geen producten in deze lade</div>'}</div>
+    ${renderForm(idx)}
+  `;
+  wireItemCards(document.getElementById('drawerItems'));
+  wireForm(idx);
+}
+
+function renderForm(idx){
+  const today = new Date().toISOString().slice(0,10);
+  const initialBereiding = getBereidingOptions(TYPES[0]);
+  return `
+    <form class="add-form" id="form-${idx}">
+      <div class="full">
+        <label>Product</label>
+        <input type="text" name="name" placeholder="bv. Erwtjes" required>
+      </div>
+      <div>
+        <label>Type</label>
+        <select name="type" id="type-${idx}">
+          ${TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label>Bereiding</label>
+        <select name="bereiding" id="bereiding-${idx}">
+          ${initialBereiding.map(r=>`<option value="${r.bereiding}">${r.bereiding}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label>Datum ingevroren</label>
+        <input type="date" name="frozenDate" value="${today}">
+      </div>
+      <div>
+        <label>Verpakking</label>
+        <input type="text" name="packaging" value="Zak">
+      </div>
+      <div>
+        <label>Houdbaar (maanden)</label>
+        ${stepperHTML('shelfLifeMonths-'+idx, 'shelfLifeMonths', initialBereiding[0]?.maanden || 6, 1)}
+      </div>
+      <div>
+        <label>Aantal (verpakkingen)</label>
+        ${stepperHTML('aantal-'+idx, 'aantal', 1, 0)}
+      </div>
+      <div class="full">
+        <label>Personen (per verpakking)</label>
+        ${stepperHTML('servings-'+idx, 'servings', 2, 1)}
+      </div>
+      <div class="full">
+        <label>Notities</label>
+        <textarea name="notes" rows="2" placeholder="bv. zelfgemaakt, extra kruiden..."></textarea>
+      </div>
+      <button type="submit" class="add-btn">+ Toevoegen aan ${escapeHtml(data.drawers[idx].name)}</button>
+    </form>
+  `;
+}
+function stepperHTML(id, field, value, min){
+  return `<div class="stepper" data-min="${min}">
+    <button type="button" class="step-btn minus">−</button>
+    <span class="step-value">${value}</span>
+    <button type="button" class="step-btn plus">+</button>
+    <input type="hidden" name="${field}" id="${id}" value="${value}">
+  </div>`;
+}
+function wireForm(idx){
+  const form = document.getElementById('form-'+idx);
+  form.addEventListener('submit', (e)=>{ e.preventDefault(); addItem(idx, form); });
+
+  form.querySelectorAll('.stepper').forEach(st=>{
+    const span = st.querySelector('.step-value');
+    const input = st.querySelector('input[type=hidden]');
+    const min = parseInt(st.dataset.min)||0;
+    st.querySelector('.plus').addEventListener('click', ()=>{
+      const v = (parseInt(input.value)||0)+1; input.value=v; span.textContent=v;
+    });
+    st.querySelector('.minus').addEventListener('click', ()=>{
+      const v = Math.max(min,(parseInt(input.value)||0)-1); input.value=v; span.textContent=v;
+    });
+  });
+
+  const typeSelect = document.getElementById('type-'+idx);
+  const bereidingSelect = document.getElementById('bereiding-'+idx);
+  const shelfInput = document.getElementById('shelfLifeMonths-'+idx);
+  const shelfSpan = shelfInput.previousElementSibling;
+
+  function refreshBereidingOptions(){
+    const opts = getBereidingOptions(typeSelect.value);
+    bereidingSelect.innerHTML = opts.map(r=>`<option value="${r.bereiding}">${r.bereiding}</option>`).join('');
+    updateShelfLife();
+  }
+  function updateShelfLife(){
+    const entry = getShelfLifeEntry(typeSelect.value, bereidingSelect.value);
+    const val = entry ? entry.maanden : 6;
+    shelfInput.value = val; shelfSpan.textContent = val;
+  }
+  typeSelect.addEventListener('change', refreshBereidingOptions);
+  bereidingSelect.addEventListener('change', updateShelfLife);
+}
+function addItem(idx, form){
+  const fd = new FormData(form);
+  const name = fd.get('name').trim();
+  if(!name) return;
+  const item = {
+    name,
+    type: fd.get('type'),
+    bereiding: fd.get('bereiding'),
+    frozenDate: fd.get('frozenDate') || new Date().toISOString().slice(0,10),
+    shelfLifeMonths: parseInt(fd.get('shelfLifeMonths')) || 6,
+    packaging: fd.get('packaging').trim() || 'Zak',
+    aantal: parseInt(fd.get('aantal')) ?? 1,
+    servings: parseInt(fd.get('servings')) || 2,
+    notes: fd.get('notes').trim()
+  };
+  data.drawers[idx].items.push(item);
+  save(); renderAll();
+}
+
+/* ===================== CSV EXPORT ===================== */
+function toCSV(rows, headers){
+  const esc = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+  return [headers.join(','), ...rows.map(r=> headers.map(h=>esc(r[h])).join(','))].join('\r\n');
+}
+function downloadCSV(filename, csv){
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function exportProductsCSV(){
+  const headers = ['Lade','Product','Type','Bereiding','DatumIngevroren','HoudbaarMnd','Verpakking','Aantal','Personen','Notities','Status'];
+  const rows = allItemsFlat().map(a=> ({
+    Lade:a.drawerName, Product:a.item.name, Type:a.item.type, Bereiding:a.item.bereiding,
+    DatumIngevroren:a.item.frozenDate, HoudbaarMnd:a.item.shelfLifeMonths, Verpakking:a.item.packaging,
+    Aantal:a.item.aantal, Personen:a.item.servings, Notities:a.item.notes, Status:statusInfo(a.remaining).label
+  }));
+  downloadCSV('diepvries_producten.csv', toCSV(rows, headers));
+}
+function exportShelfLifeTableCSV(){
+  const headers = ['Type','Bereiding','Maanden','Emoji'];
+  downloadCSV('diepvries_richtlijnen.csv', toCSV(SHELF_LIFE_TABLE, headers));
+}
+
+/* ---- CSV parsing (ondersteunt quotes en komma's binnen velden) ---- */
+function parseCSVLine(line){
+  const result = []; let cur=''; let inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const c = line[i];
+    if(inQuotes){
+      if(c === '"'){ if(line[i+1] === '"'){ cur+='"'; i++; } else inQuotes=false; }
+      else cur += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ',') { result.push(cur); cur=''; }
+      else cur += c;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+function parseCSV(text){
+  const lines = text.split(/\r\n|\n/).filter(l=>l.length);
+  if(lines.length < 2) return [];
+  const headers = parseCSVLine(lines[0]).map(h=>h.trim());
+  return lines.slice(1).map(line=>{
+    const vals = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h,i)=> obj[h] = (vals[i]||'').trim());
+    return obj;
+  });
+}
+function importProductsCSV(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const text = e.target.result.replace(/^\uFEFF/, '');
+      const rows = parseCSV(text);
+      let added = 0;
+      rows.forEach(r=>{
+        if(!r.Product) return;
+        const drawerIdx = data.drawers.findIndex(d=>d.name===r.Lade);
+        const targetIdx = drawerIdx>=0 ? drawerIdx : 0;
+        data.drawers[targetIdx].items.push({
+          name: r.Product,
+          type: TYPES.includes(r.Type) ? r.Type : 'Overig',
+          bereiding: r.Bereiding || '',
+          frozenDate: r.DatumIngevroren || new Date().toISOString().slice(0,10),
+          shelfLifeMonths: parseInt(r.HoudbaarMnd) || 6,
+          packaging: r.Verpakking || 'Zak',
+          aantal: (r.Aantal!==undefined && r.Aantal!=='') ? parseInt(r.Aantal) : 1,
+          servings: parseInt(r.Personen) || 2,
+          notes: r.Notities || ''
+        });
+        added++;
+      });
+      save(); renderAll();
+      alert(added + ' product(en) geïmporteerd.');
+    }catch(err){
+      console.error(err);
+      alert('Kon het CSV-bestand niet lezen. Controleer of het formaat overeenkomt met de export.');
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', (e)=>{
+  if(e.target.files[0]) importProductsCSV(e.target.files[0]);
+  e.target.value = '';
+});
+
+function importShelfLifeCSV(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const text = e.target.result.replace(/^\uFEFF/, '');
+      const rows = parseCSV(text);
+      let updated = 0, added = 0;
+      rows.forEach(r=>{
+        if(!r.Type || !r.Bereiding) return;
+        const maanden = parseInt(r.Maanden) || 6;
+        const emoji = r.Emoji || getEmoji(r.Type, '') || '📦';
+        const existing = getShelfLifeEntry(r.Type, r.Bereiding);
+        if(existing){ existing.maanden = maanden; existing.emoji = emoji; updated++; }
+        else { SHELF_LIFE_TABLE.push({type:r.Type, bereiding:r.Bereiding, maanden, emoji}); added++; }
+      });
+      saveJSON(SHELF_TABLE_KEY, SHELF_LIFE_TABLE);
+      renderAll();
+      alert(`${added} nieuwe combinatie(s) toegevoegd, ${updated} bijgewerkt.`);
+    }catch(err){
+      console.error(err);
+      alert('Kon het CSV-bestand niet lezen. Verwacht kolommen: Type, Bereiding, Maanden, Emoji.');
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+/* ===================== RESET ===================== */
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(confirm('Alle laden en producten wissen?')){
+    data = { drawers: defaultDrawers() };
+    openDrawerIndex = null; save(); renderAll();
+  }
+});
+
+/* ===================== MASTER RENDER ===================== */
+function renderAll(){
+  renderDrawers();
+  if(activeTab==='dashboard') renderDashboard();
+  if(activeTab==='list') renderList();
+  if(activeTab==='drawer') renderDrawerView();
+}
+saveJSON(SHELF_TABLE_KEY, SHELF_LIFE_TABLE);
+renderAll();
+</script>
+</body>
+</html>
