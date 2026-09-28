@@ -143,8 +143,14 @@ h1{font-size:1.3rem; margin:2px 0 2px;}
 .settings-block:first-of-type{ border-top:none; padding-top:0; margin-top:0; }
 .settings-block-title{ font-size:.82rem; font-weight:bold; color:var(--mint-shadow); margin-bottom:4px; }
 .edit-table{ display:flex; flex-direction:column; gap:6px; margin-top:8px; overflow-x:auto; }
-.edit-row{ display:grid; grid-template-columns:1fr 60px 30px; gap:6px; align-items:center; min-width:220px; }
+.edit-row{ display:grid; grid-template-columns:44px 1fr 60px 30px; gap:6px; align-items:center; min-width:260px; }
 .edit-row.shelf-row{ grid-template-columns:1fr 1fr 56px 56px 30px; min-width:420px; }
+.reorder-btns{ display:flex; flex-direction:column; gap:2px; }
+.move-btn{
+  width:20px; height:16px; border-radius:4px; border:1px solid var(--line); background:#fff;
+  color:var(--mint-dark); font-size:.65rem; line-height:1; cursor:pointer; padding:0;
+}
+.move-btn:disabled{ opacity:.3; cursor:default; }
 .edit-row input{
   font-family:inherit; font-size:.75rem; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:#fff; width:100%;
 }
@@ -164,8 +170,8 @@ h1{font-size:1.3rem; margin:2px 0 2px;}
   body{ padding-bottom:14px; }
   h1, .sub, .legend, .reset-btn{ flex:0 0 auto; }
   .main{ flex:1 1 auto; min-height:0; align-items:stretch; flex-wrap:nowrap; }
-  .scene{ height:100%; }
-  .stage{ height:100%; max-height:760px; width:auto; margin:0 auto; }
+  .scene{ height:100%; display:flex; align-items:center; justify-content:center; }
+  .stage{ height:calc(100% - 76px); max-height:720px; width:auto; margin:38px auto; }
   .right{ height:100%; overflow-y:auto; padding-right:6px; }
 }
 </style>
@@ -301,7 +307,7 @@ function guessEmoji(item){
 
 /* ===================== PRODUCT OPSLAG ===================== */
 const STORAGE_KEY = "diepvries_data_v2";
-let data = loadJSON(STORAGE_KEY, null) || { drawers: defaultDrawers() };
+let data = loadJSON(STORAGE_KEY, null) || { drawers: defaultDrawers(), lastDefrost: null };
 let openDrawerIndex = null;
 let activeTab = 'dashboard';
 
@@ -688,13 +694,27 @@ function addItem(idx, form){
 }
 
 /* ===================== INSTELLINGEN: JSON-BACKUP + TABEL-EDITORS ===================== */
-function downloadJSON(filename, obj){
-  const json = JSON.stringify(obj, null, 2);
-  const blob = new Blob([json], {type:'application/json'});
+// Probeert het native "deel"-scherm rechtstreeks te openen (1 stap: daar staat "Bewaar in Bestanden"
+// meteen tussen de opties) i.p.v. eerst het bestand te tonen en pas via het deel-icoontje verder te gaan.
+// Werkt dit niet (oudere browser/desktop), dan valt het terug op de gewone download.
+async function shareOrDownloadBlob(filename, blob){
+  try{
+    const file = new File([blob], filename, {type:blob.type});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:filename});
+      return;
+    }
+  }catch(err){
+    if(err && err.name === 'AbortError') return; // gebruiker annuleerde het deelscherm zelf
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download=filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+function downloadJSON(filename, obj){
+  const json = JSON.stringify(obj, null, 2);
+  shareOrDownloadBlob(filename, new Blob([json], {type:'application/json'}));
 }
 function exportFullBackup(){
   const backup = {
@@ -725,6 +745,23 @@ function importFullBackup(file){
   reader.readAsText(file, 'UTF-8');
 }
 
+function defrostStatusText(){
+  if(!data.lastDefrost) return 'Nog niet geregistreerd';
+  const weeks = Math.floor(daysBetween(data.lastDefrost)/7);
+  if(weeks<0) return 'Gepland binnenkort';
+  if(weeks===0) return 'Deze week nog schoongemaakt';
+  return `${weeks} we${weeks===1?'ek':'ken'} geleden schoongemaakt`;
+}
+function setDefrostDate(){
+  const current = data.lastDefrost || new Date().toISOString().slice(0,10);
+  const input = prompt('Wanneer is de diepvries laatst schoongemaakt/ontdooid? (JJJJ-MM-DD)', current);
+  if(!input) return;
+  const val = input.trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(val)){ alert('Gebruik het formaat JJJJ-MM-DD, bv. 2026-03-15'); return; }
+  data.lastDefrost = val;
+  save();
+  renderAll();
+}
 function renderSettings(){
   const box = document.getElementById('view-settings');
   box.innerHTML = `
@@ -741,6 +778,14 @@ function renderSettings(){
         <button class="export-btn" id="backupSaveBtn">⬇ Back-up opslaan (JSON)</button>
         <button class="export-btn" id="backupLoadBtn">⬆ Back-up inladen</button>
         <input type="file" id="backupFile" accept=".json,application/json" style="display:none;">
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <div class="settings-block-title">🧊 Onderhoud</div>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <button class="export-btn defrost-btn" id="defrostBtn">❄️ Defrost</button>
+        <span class="panel-sub" style="margin:0;">${defrostStatusText()}</span>
       </div>
     </div>
 
@@ -765,6 +810,7 @@ function renderSettings(){
     if(e.target.files[0]) importFullBackup(e.target.files[0]);
     e.target.value = '';
   });
+  document.getElementById('defrostBtn').addEventListener('click', setDefrostDate);
 
   renderEmojiTable();
   renderShelfTable();
@@ -782,12 +828,17 @@ function renderSettings(){
 
 function renderEmojiTable(){
   const box = document.getElementById('emojiTable');
-  box.innerHTML = NAME_EMOJI_TABLE.map((r,i)=>`
+  box.innerHTML = `<div class="panel-sub" style="margin-bottom:6px;">Volgorde telt: bij een productnaam wint het eerste trefwoord dat past. Gebruik ↑/↓ om te herschikken.</div>` +
+    (NAME_EMOJI_TABLE.map((r,i)=>`
     <div class="edit-row">
+      <div class="reorder-btns">
+        <button class="move-btn" data-idx="${i}" data-dir="-1" ${i===0?'disabled':''} title="Omhoog">↑</button>
+        <button class="move-btn" data-idx="${i}" data-dir="1" ${i===NAME_EMOJI_TABLE.length-1?'disabled':''} title="Omlaag">↓</button>
+      </div>
       <input type="text" class="e-keyword" data-idx="${i}" value="${escapeHtml(r.keyword)}" placeholder="trefwoord (bv. banaan)">
       <input type="text" class="e-emoji" data-idx="${i}" value="${escapeHtml(r.emoji)}" placeholder="🙂" maxlength="4">
       <button class="del-row-btn" data-idx="${i}" title="Verwijderen">✕</button>
-    </div>`).join('') || `<div class="empty-msg">Nog geen trefwoorden.</div>`;
+    </div>`).join('') || `<div class="empty-msg">Nog geen trefwoorden.</div>`);
 
   box.querySelectorAll('.e-keyword').forEach(inp=> inp.addEventListener('change', ()=>{
     NAME_EMOJI_TABLE[inp.dataset.idx].keyword = inp.value.trim();
@@ -799,6 +850,14 @@ function renderEmojiTable(){
   }));
   box.querySelectorAll('.del-row-btn').forEach(btn=> btn.addEventListener('click', ()=>{
     NAME_EMOJI_TABLE.splice(parseInt(btn.dataset.idx),1);
+    saveJSON(NAME_EMOJI_KEY, NAME_EMOJI_TABLE);
+    renderEmojiTable();
+  }));
+  box.querySelectorAll('.move-btn').forEach(btn=> btn.addEventListener('click', ()=>{
+    const i = parseInt(btn.dataset.idx);
+    const j = i + parseInt(btn.dataset.dir);
+    if(j<0 || j>=NAME_EMOJI_TABLE.length) return;
+    [NAME_EMOJI_TABLE[i], NAME_EMOJI_TABLE[j]] = [NAME_EMOJI_TABLE[j], NAME_EMOJI_TABLE[i]];
     saveJSON(NAME_EMOJI_KEY, NAME_EMOJI_TABLE);
     renderEmojiTable();
   }));
@@ -836,11 +895,7 @@ function toCSV(rows, headers){
   return [headers.join(','), ...rows.map(r=> headers.map(h=>esc(r[h])).join(','))].join('\r\n');
 }
 function downloadCSV(filename, csv){
-  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download=filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  shareOrDownloadBlob(filename, new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'}));
 }
 function exportProductsCSV(){
   const headers = ['Lade','Product','Type','Bereiding','DatumIngevroren','HoudbaarMnd','Verpakking','Aantal','Personen','Notities','Status'];
@@ -927,7 +982,7 @@ document.getElementById('importFile').addEventListener('change', (e)=>{
 /* ===================== RESET ===================== */
 document.getElementById('resetBtn').addEventListener('click', ()=>{
   if(confirm('Alle laden en producten wissen?')){
-    data = { drawers: defaultDrawers() };
+    data = { drawers: defaultDrawers(), lastDefrost: null };
     openDrawerIndex = null; save(); renderAll();
   }
 });
