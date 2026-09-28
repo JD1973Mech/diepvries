@@ -170,9 +170,9 @@ h1{font-size:1.3rem; margin:2px 0 2px;}
   body{ padding-bottom:14px; }
   h1, .sub, .legend, .reset-btn{ flex:0 0 auto; }
   .main{ flex:1 1 auto; min-height:0; align-items:stretch; flex-wrap:nowrap; }
-  .scene{ height:100%; display:flex; align-items:center; justify-content:center; }
-  .stage{ height:calc(100% - 76px); max-height:720px; width:auto; margin:38px auto; }
-  .right{ height:100%; overflow-y:auto; padding-right:6px; }
+  .scene{ height:100%; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+  .stage{ flex:0 0 auto; margin:0; } /* breedte/hoogte worden door fitFreezer() in pixels gezet */
+  .right{ height:100%; flex:1 1 0; min-width:0; overflow-y:auto; padding-right:6px; }
 }
 </style>
 </head>
@@ -997,6 +997,22 @@ function renderAll(){
 }
 saveJSON(SHELF_TABLE_KEY, SHELF_LIFE_TABLE);
 saveJSON(NAME_EMOJI_KEY, NAME_EMOJI_TABLE);
+/* ===================== DIEPVRIES SCHALEN OP SCHERMGROOTTE ===================== */
+// Zet de tekening op een vaste pixelmaat: volledige beschikbare hoogte min ~1cm boven/onder,
+// maar nooit breder dan ~46% van het scherm zodat rechts genoeg plaats overblijft.
+function fitFreezer(){
+  const stage = document.querySelector('.stage');
+  const main = document.querySelector('.main');
+  if(window.innerWidth <= 760){ stage.style.width=''; stage.style.height=''; return; }
+  const availH = main.clientHeight - 76;
+  const maxW = main.clientWidth * 0.46;
+  const h = Math.max(240, Math.min(availH, 720, maxW/0.75));
+  stage.style.height = h + 'px';
+  stage.style.width = (h*0.75) + 'px';
+}
+window.addEventListener('resize', fitFreezer);
+window.addEventListener('orientationchange', ()=> setTimeout(fitFreezer, 250));
+fitFreezer();
 renderAll();
 </script>
 </body>
