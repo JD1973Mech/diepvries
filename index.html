@@ -128,15 +128,30 @@ h1{font-size:1.3rem; margin:2px 0 2px;}
   font-family:inherit; font-size:.78rem; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:#fff; width:100%; resize:vertical;
 }
 .add-form .full{ grid-column:1/3; }
-.stepper{ display:flex; align-items:center; gap:8px; background:#fff; border:1px solid var(--line); border-radius:20px; padding:3px 6px; width:fit-content; }
-.stepper .step-btn{ width:24px; height:24px; border-radius:50%; border:none; background:var(--mint-dark); color:#fff; font-size:1rem; cursor:pointer; line-height:1; }
-.stepper .step-value{ min-width:26px; text-align:center; font-weight:bold; font-size:.85rem; }
 .add-btn{ grid-column:1/3; margin-top:2px; background:linear-gradient(180deg,var(--mint-mid),var(--mint-dark)); color:#fff; border:none; border-radius:8px; padding:9px; font-size:.8rem; font-weight:bold; cursor:pointer; box-shadow:0 3px 6px rgba(0,0,0,.15); }
+
+/* invulformulier: alle velden even hoog, niets dat over de buurcel loopt */
+.add-form > div{ min-width:0; }
+.add-form input[type=text], .add-form input[type=date], .add-form select{ height:34px; min-height:34px; }
+.add-form input[type=date]{ -webkit-appearance:none; appearance:none; display:block; min-width:0; max-width:100%; line-height:normal; }
+.add-form select{ -webkit-appearance:none; appearance:none; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8071'/%3E%3C/svg%3E") no-repeat right 8px center; padding-right:24px; }
+.add-form .row3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.add-form .row3 label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.stepper{ display:flex; align-items:center; gap:2px; background:#fff; border:1px solid var(--line); border-radius:17px; padding:0 3px; width:100%; height:34px; }
+.stepper .step-btn{ width:24px; height:24px; flex:0 0 24px; border-radius:50%; border:none; background:var(--mint-dark); color:#fff; font-size:1rem; line-height:1; cursor:pointer; padding:0; }
+.add-form .stepper .step-input{ flex:1 1 0; min-width:0; width:100%; height:100%; min-height:0; border:none; background:transparent; text-align:center; font-weight:bold; font-size:.85rem; padding:0; border-radius:0; }
 
 /* ---------- LIST TAB ---------- */
 .sort-controls{ display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:.75rem; color:#8a8071; flex-wrap:wrap; }
 .sort-controls select{ font-family:inherit; font-size:.78rem; padding:5px 9px; border-radius:8px; border:1px solid var(--line); background:#fff; }
 .export-btn{ font-family:inherit; font-size:.7rem; padding:5px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; color:#6d8b7a; cursor:pointer; }
+
+/* schuiven op de diepvries: groter, en het aantal in een blauw label (los van de kleurpuntjes) */
+.drawer-label{ font-size:.85rem; }
+.drawer-count{ font-size:.75rem; font-weight:bold; background:#3f6fa8; padding:1px 8px; border-radius:10px; }
+.drawer-knob{ width:30px; height:7px; }
+.drawer-dots{ font-size:.75rem; margin-top:2px; }
+.mini-step span{ min-width:26px; }
 
 /* ---------- SETTINGS ---------- */
 .settings-block{ border-top:1px solid var(--line); padding-top:14px; margin-top:14px; }
@@ -154,6 +169,8 @@ h1{font-size:1.3rem; margin:2px 0 2px;}
 .edit-row input{
   font-family:inherit; font-size:.75rem; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:#fff; width:100%;
 }
+.edit-row .dec-check{ display:flex; align-items:center; gap:3px; font-size:.7rem; color:var(--ink); white-space:nowrap; }
+.edit-row input[type=checkbox]{ width:auto; padding:0; }
 .edit-row .del-row-btn{ border:none; background:none; color:#b0a695; font-size:.9rem; cursor:pointer; padding:2px; }
 .edit-row .del-row-btn:hover{ color:#c0392b; }
 
@@ -305,6 +322,24 @@ function guessEmoji(item){
   return hit ? hit.emoji : getEmoji(item.type, item.bereiding);
 }
 
+// Verpakkingen (keuzelijst) + of er decimalen (1 cijfer na de komma) toegestaan zijn bij het aantal.
+// De eerste in de lijst is de standaard. Eigen opslag-sleutel, zit ook in de JSON-backup.
+const DEFAULT_PACKAGING_TABLE = [
+  {name:"bakje(s)", decimal:false}, {name:"zakje(s)", decimal:false},
+  {name:"kilogram", decimal:true},  {name:"gram", decimal:false},
+  {name:"liter", decimal:true},     {name:"centiliter", decimal:false}
+];
+const PACKAGING_KEY = "diepvries_packaging_table_v1";
+let PACKAGING_TABLE = loadJSON(PACKAGING_KEY, DEFAULT_PACKAGING_TABLE);
+function packagingNames(){ return PACKAGING_TABLE.length ? PACKAGING_TABLE.map(r=>r.name) : ['bakje(s)']; }
+function isDecimalPackaging(name){ const p = PACKAGING_TABLE.find(r=>r.name===name); return !!(p && p.decimal); }
+function roundAmount(n, decimal){ return decimal ? Math.round(n*10)/10 : Math.round(n); }
+function formatAmount(n){ return String(Math.round((Number(n)||0)*10)/10).replace('.',','); }
+function parseAmount(str, decimal){
+  const n = parseFloat(String(str).replace(',','.'));
+  return isNaN(n) ? null : Math.max(0, roundAmount(n, decimal));
+}
+
 /* ===================== PRODUCT OPSLAG ===================== */
 const STORAGE_KEY = "diepvries_data_v2";
 let data = loadJSON(STORAGE_KEY, null) || { drawers: defaultDrawers(), lastDefrost: null };
@@ -387,7 +422,7 @@ function renderDrawers(){
     div.innerHTML = `
       <div class="drawer-top">
         <span class="drawer-label">${escapeHtml(drawer.name)}</span>
-        <div class="drawer-right"><span class="drawer-count">${drawer.items.length}</span><span class="drawer-knob"></span></div>
+        <div class="drawer-right"><span class="drawer-count">📦 ${drawer.items.length}</span><span class="drawer-knob"></span></div>
       </div>
       <div class="drawer-dots">${dots}</div>`;
     div.addEventListener('click', ()=>{ openDrawerIndex = idx; switchTab('drawer'); });
@@ -437,7 +472,7 @@ function itemCardHTML({item, drawerIdx, itemIdx}){
           ${escapeHtml(item.packaging) || 'Verpakking'}:
           <div class="mini-step">
             <button type="button" class="stock-minus" data-uid="${uid}">−</button>
-            <span>${item.aantal}</span>
+            <span>${formatAmount(item.aantal)}</span>
             <button type="button" class="stock-plus" data-uid="${uid}">+</button>
           </div>
           ${item.servings>0 ? ` voor ${item.servings} pers.` : ''}
@@ -470,7 +505,7 @@ function parseUid(uid){ const [d,i] = uid.split('-').map(Number); return {d,i}; 
 function changeStock(uid, delta){
   const {d,i} = parseUid(uid);
   const item = data.drawers[d].items[i];
-  item.aantal = Math.max(0, (item.aantal||0)+delta);
+  item.aantal = Math.max(0, roundAmount((item.aantal||0) + delta*(isDecimalPackaging(item.packaging)?0.5:1), isDecimalPackaging(item.packaging)));
   save(); renderAll();
 }
 function deleteItem(uid){
@@ -554,6 +589,8 @@ function renderDrawerView(){
 function renderForm(idx){
   const today = new Date().toISOString().slice(0,10);
   const initialBereiding = getBereidingOptions(getTypes()[0]);
+  const packs = packagingNames();
+  const defDecimal = isDecimalPackaging(packs[0]);
   return `
     <form class="add-form" id="form-${idx}">
       <div class="full">
@@ -580,19 +617,23 @@ function renderForm(idx){
       </div>
       <div>
         <label>Verpakking</label>
-        <input type="text" name="packaging" value="Zak">
+        <select name="packaging" id="packaging-${idx}">
+          ${packs.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}
+        </select>
       </div>
-      <div>
-        <label>Houdbaar (maanden)</label>
-        ${stepperHTML('shelfLifeMonths-'+idx, 'shelfLifeMonths', initialBereiding[0]?.maanden || 6, 1)}
-      </div>
-      <div>
-        <label>Aantal (verpakkingen)</label>
-        ${stepperHTML('aantal-'+idx, 'aantal', 1, 0)}
-      </div>
-      <div class="full">
-        <label>Personen (per verpakking)</label>
-        ${stepperHTML('servings-'+idx, 'servings', 2, 0)}
+      <div class="full row3">
+        <div>
+          <label>Houdbaar (mnd)</label>
+          ${stepperHTML('shelfLifeMonths-'+idx, 'shelfLifeMonths', initialBereiding[0]?.maanden || 6, 1, false)}
+        </div>
+        <div>
+          <label>Aantal</label>
+          ${stepperHTML('aantal-'+idx, 'aantal', 1, 0, defDecimal)}
+        </div>
+        <div>
+          <label>Personen</label>
+          ${stepperHTML('servings-'+idx, 'servings', 2, 0, false)}
+        </div>
       </div>
       <div class="full">
         <label>Notities</label>
@@ -602,12 +643,12 @@ function renderForm(idx){
     </form>
   `;
 }
-function stepperHTML(id, field, value, min){
-  return `<div class="stepper" data-min="${min}">
+// Teller met −/+ en een invoerveld dat je ook rechtstreeks kan typen. Bij "decimal" mag er 1 cijfer na de komma bij.
+function stepperHTML(id, field, value, min, decimal){
+  return `<div class="stepper" data-min="${min}" data-decimal="${decimal?1:0}">
     <button type="button" class="step-btn minus">−</button>
-    <span class="step-value">${value}</span>
+    <input type="text" class="step-input" inputmode="${decimal?'decimal':'numeric'}" name="${field}" id="${id}" value="${formatAmount(value)}">
     <button type="button" class="step-btn plus">+</button>
-    <input type="hidden" name="${field}" id="${id}" value="${value}">
   </div>`;
 }
 function wireForm(idx){
@@ -615,20 +656,28 @@ function wireForm(idx){
   form.addEventListener('submit', (e)=>{ e.preventDefault(); addItem(idx, form); });
 
   form.querySelectorAll('.stepper').forEach(st=>{
-    const span = st.querySelector('.step-value');
-    const input = st.querySelector('input[type=hidden]');
-    const min = parseInt(st.dataset.min)||0;
-    st.querySelector('.plus').addEventListener('click', ()=>{
-      const v = (parseInt(input.value)||0)+1; input.value=v; span.textContent=v;
-    });
-    st.querySelector('.minus').addEventListener('click', ()=>{
-      const v = Math.max(min,(parseInt(input.value)||0)-1); input.value=v; span.textContent=v;
-    });
+    const input = st.querySelector('.step-input');
+    const min = parseFloat(st.dataset.min)||0;
+    const isDec = ()=> st.dataset.decimal==='1';
+    const set = v => { input.value = formatAmount(Math.max(min, roundAmount(v, isDec()))); };
+    st.querySelector('.plus').addEventListener('click', ()=> set((parseAmount(input.value, true)||0) + (isDec()?0.5:1)));
+    st.querySelector('.minus').addEventListener('click', ()=> set((parseAmount(input.value, true)||0) - (isDec()?0.5:1)));
+    input.addEventListener('change', ()=>{ const v = parseAmount(input.value, isDec()); set(v===null ? min : v); });
   });
 
   const typeSelect = document.getElementById('type-'+idx);
   const bereidingSelect = document.getElementById('bereiding-'+idx);
   const shelfInput = document.getElementById('shelfLifeMonths-'+idx);
+  const packSelect = document.getElementById('packaging-'+idx);
+  const aantalInput = document.getElementById('aantal-'+idx);
+
+  // Aantal: hele getallen, behalve bij verpakkingen waar "0,1" is aangevinkt (bv. kilogram, liter)
+  packSelect.addEventListener('change', ()=>{
+    const dec = isDecimalPackaging(packSelect.value);
+    aantalInput.closest('.stepper').dataset.decimal = dec ? '1' : '0';
+    aantalInput.setAttribute('inputmode', dec ? 'decimal' : 'numeric');
+    aantalInput.dispatchEvent(new Event('change'));
+  });
 
   function refreshBereidingOptions(){
     const opts = getBereidingOptions(typeSelect.value);
@@ -638,9 +687,7 @@ function wireForm(idx){
   }
   function updateShelfLife(){
     const entry = getShelfLifeEntry(typeSelect.value, bereidingSelect.value);
-    const val = entry ? entry.maanden : 6;
-    shelfInput.value = val;
-    shelfInput.closest('.stepper').querySelector('.step-value').textContent = val;
+    shelfInput.value = entry ? entry.maanden : 6;
   }
   function rebuildTypeOptions(selected){
     typeSelect.innerHTML = getTypes().map(t=>`<option value="${t}">${t}</option>`).join('')
@@ -678,15 +725,16 @@ function addItem(idx, form){
   const fd = new FormData(form);
   const name = fd.get('name').trim();
   if(!name) return;
+  const packaging = fd.get('packaging') || packagingNames()[0];
   const item = {
     name,
     type: fd.get('type'),
     bereiding: fd.get('bereiding'),
     frozenDate: fd.get('frozenDate') || new Date().toISOString().slice(0,10),
     shelfLifeMonths: parseInt(fd.get('shelfLifeMonths')) || 6,
-    packaging: fd.get('packaging').trim() || 'Zak',
-    aantal: parseInt(fd.get('aantal')) ?? 1,
-    servings: parseInt(fd.get('servings')) || 2,
+    packaging: packaging,
+    aantal: parseAmount(fd.get('aantal'), isDecimalPackaging(packaging)) ?? 1,
+    servings: isNaN(parseInt(fd.get('servings'))) ? 2 : parseInt(fd.get('servings')),
     notes: fd.get('notes').trim()
   };
   data.drawers[idx].items.push(item);
@@ -718,8 +766,9 @@ function downloadJSON(filename, obj){
 }
 function exportFullBackup(){
   const backup = {
-    app: 'Mijn Diepvries', version: 1, exportedAt: new Date().toISOString(),
-    data, shelfLifeTable: SHELF_LIFE_TABLE, nameEmojiTable: NAME_EMOJI_TABLE
+    app: 'Mijn Diepvries', version: 2, exportedAt: new Date().toISOString(),
+    data, lastDefrost: data.lastDefrost || null,
+    shelfLifeTable: SHELF_LIFE_TABLE, nameEmojiTable: NAME_EMOJI_TABLE, packagingTable: PACKAGING_TABLE
   };
   const stamp = new Date().toISOString().slice(0,10);
   downloadJSON(`diepvries_backup_${stamp}.json`, backup);
@@ -731,9 +780,11 @@ function importFullBackup(file){
       const backup = JSON.parse(e.target.result);
       if(!backup.data || !Array.isArray(backup.data.drawers)) throw new Error('Ongeldig back-upbestand');
       data = backup.data;
+      if(backup.lastDefrost !== undefined) data.lastDefrost = backup.lastDefrost;
+      if(Array.isArray(backup.packagingTable)) PACKAGING_TABLE = backup.packagingTable;
       if(Array.isArray(backup.shelfLifeTable)) SHELF_LIFE_TABLE = backup.shelfLifeTable;
       if(Array.isArray(backup.nameEmojiTable)) NAME_EMOJI_TABLE = backup.nameEmojiTable;
-      save(); saveJSON(SHELF_TABLE_KEY, SHELF_LIFE_TABLE); saveJSON(NAME_EMOJI_KEY, NAME_EMOJI_TABLE);
+      save(); saveJSON(SHELF_TABLE_KEY, SHELF_LIFE_TABLE); saveJSON(NAME_EMOJI_KEY, NAME_EMOJI_TABLE); saveJSON(PACKAGING_KEY, PACKAGING_TABLE);
       openDrawerIndex = null;
       renderAll();
       alert('Back-up ingeladen.');
@@ -790,6 +841,13 @@ function renderSettings(){
     </div>
 
     <div class="settings-block">
+      <div class="settings-block-title">🥡 Verpakkingen</div>
+      <div class="panel-sub">Keuzelijst voor het veld Verpakking; de bovenste is de standaard. Vink "0,1" aan als je er ook decimalen mee wil invoeren (bv. 1,5 liter).</div>
+      <div class="edit-table" id="packagingTable"></div>
+      <button class="export-btn" id="addPackagingRowBtn" style="margin-top:8px;">+ Verpakking toevoegen</button>
+    </div>
+
+    <div class="settings-block">
       <div class="settings-block-title">🌿 Emoji-trefwoorden</div>
       <div class="panel-sub">Welke woorden in een productnaam een specifieke emoji tonen.</div>
       <div class="edit-table" id="emojiTable"></div>
@@ -812,8 +870,14 @@ function renderSettings(){
   });
   document.getElementById('defrostBtn').addEventListener('click', setDefrostDate);
 
+  renderPackagingTable();
   renderEmojiTable();
   renderShelfTable();
+  document.getElementById('addPackagingRowBtn').addEventListener('click', ()=>{
+    PACKAGING_TABLE.push({name:'nieuw', decimal:false});
+    saveJSON(PACKAGING_KEY, PACKAGING_TABLE);
+    renderPackagingTable();
+  });
   document.getElementById('addEmojiRowBtn').addEventListener('click', ()=>{
     NAME_EMOJI_TABLE.push({keyword:'', emoji:'❓'});
     saveJSON(NAME_EMOJI_KEY, NAME_EMOJI_TABLE);
@@ -860,6 +924,42 @@ function renderEmojiTable(){
     [NAME_EMOJI_TABLE[i], NAME_EMOJI_TABLE[j]] = [NAME_EMOJI_TABLE[j], NAME_EMOJI_TABLE[i]];
     saveJSON(NAME_EMOJI_KEY, NAME_EMOJI_TABLE);
     renderEmojiTable();
+  }));
+}
+
+function renderPackagingTable(){
+  const box = document.getElementById('packagingTable');
+  const n = PACKAGING_TABLE.length;
+  box.innerHTML = PACKAGING_TABLE.map((r,i)=>`
+    <div class="edit-row">
+      <div class="reorder-btns">
+        <button class="move-btn" data-idx="${i}" data-dir="-1" ${i===0?'disabled':''} title="Omhoog">↑</button>
+        <button class="move-btn" data-idx="${i}" data-dir="1" ${i===n-1?'disabled':''} title="Omlaag">↓</button>
+      </div>
+      <input type="text" class="p-name" data-idx="${i}" value="${escapeHtml(r.name)}" placeholder="bv. bakje(s)">
+      <label class="dec-check"><input type="checkbox" class="p-dec" data-idx="${i}" ${r.decimal?'checked':''}> 0,1</label>
+      <button class="del-row-btn" data-idx="${i}" title="Verwijderen">✕</button>
+    </div>`).join('');
+  box.querySelectorAll('.p-name').forEach(inp=> inp.addEventListener('change', ()=>{
+    PACKAGING_TABLE[inp.dataset.idx].name = inp.value.trim() || 'onbekend';
+    saveJSON(PACKAGING_KEY, PACKAGING_TABLE);
+  }));
+  box.querySelectorAll('.p-dec').forEach(cb=> cb.addEventListener('change', ()=>{
+    PACKAGING_TABLE[cb.dataset.idx].decimal = cb.checked;
+    saveJSON(PACKAGING_KEY, PACKAGING_TABLE);
+  }));
+  box.querySelectorAll('.del-row-btn').forEach(btn=> btn.addEventListener('click', ()=>{
+    if(PACKAGING_TABLE.length<=1){ alert('Er moet minstens één verpakking overblijven.'); return; }
+    PACKAGING_TABLE.splice(parseInt(btn.dataset.idx),1);
+    saveJSON(PACKAGING_KEY, PACKAGING_TABLE);
+    renderPackagingTable();
+  }));
+  box.querySelectorAll('.move-btn').forEach(btn=> btn.addEventListener('click', ()=>{
+    const i = parseInt(btn.dataset.idx), j = i + parseInt(btn.dataset.dir);
+    if(j<0 || j>=PACKAGING_TABLE.length) return;
+    [PACKAGING_TABLE[i], PACKAGING_TABLE[j]] = [PACKAGING_TABLE[j], PACKAGING_TABLE[i]];
+    saveJSON(PACKAGING_KEY, PACKAGING_TABLE);
+    renderPackagingTable();
   }));
 }
 
@@ -957,8 +1057,8 @@ function importProductsCSV(file){
           bereiding: r.Bereiding || '',
           frozenDate: r.DatumIngevroren || new Date().toISOString().slice(0,10),
           shelfLifeMonths: parseInt(r.HoudbaarMnd) || 6,
-          packaging: r.Verpakking || 'Zak',
-          aantal: (r.Aantal!==undefined && r.Aantal!=='') ? parseInt(r.Aantal) : 1,
+          packaging: r.Verpakking || packagingNames()[0],
+          aantal: (r.Aantal!==undefined && r.Aantal!=='') ? parseFloat(String(r.Aantal).replace(',','.')) : 1,
           servings: parseInt(r.Personen) || 2,
           notes: r.Notities || ''
         });
@@ -1012,6 +1112,7 @@ function fitFreezer(){
 }
 window.addEventListener('resize', fitFreezer);
 window.addEventListener('orientationchange', ()=> setTimeout(fitFreezer, 250));
+saveJSON(PACKAGING_KEY, PACKAGING_TABLE);
 fitFreezer();
 renderAll();
 </script>
